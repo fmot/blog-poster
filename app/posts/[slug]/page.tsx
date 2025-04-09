@@ -1,6 +1,9 @@
-import { allPosts } from "@/.contentlayer/generated";
+import { allPosts } from "contentlayer/generated";
 import { format, parseISO } from "date-fns";
-import { getMDXComponent } from "next-contentlayer2/hooks";
+import { notFound } from "next/navigation";
+
+// MDXコンポーネントのインポート方法を変更
+import { MDXContent } from "../../components/mdx-component";
 
 interface PostPageProps {
   params: {
@@ -8,14 +11,26 @@ interface PostPageProps {
   };
 }
 
-export default function PostPage({ params }: PostPageProps) {
-  const post = allPosts.find((post) => post._raw.flattenedPath === params.slug);
+// generateStaticParamsを追加して静的生成を有効にする
+export async function generateStaticParams() {
+  return allPosts.map((post) => ({
+    slug: post._raw.flattenedPath,
+  }));
+}
 
-  if (!post?.body.code) {
-    return <div>Post not found</div>;
+export default function PostPage({ params }: PostPageProps) {
+  // asyncキーワードを削除し、awaitも使わない
+  const slug = params.slug;
+
+  if (!slug) {
+    notFound();
   }
 
-  const Content = getMDXComponent(post.body.code);
+  const post = allPosts.find((post) => post._raw.flattenedPath === slug);
+
+  if (!post) {
+    notFound();
+  }
 
   return (
     <article className="py-8 mx-auto max-w-xl">
@@ -25,11 +40,9 @@ export default function PostPage({ params }: PostPageProps) {
         </time>
         <h1>{post.title}</h1>
       </div>
-      <Content />
-      {/* <div
-        className="text-sm [&>*]:mb-3 [&>*:last-child]:mb-0"
-        dangerouslySetInnerHTML={{ __html: post.body.html }}
-      /> */}
+
+      {/* MDXコンテンツをレンダリング */}
+      <MDXContent code={post.body.code} />
     </article>
   );
 }
